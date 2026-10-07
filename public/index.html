@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wallet statements</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ============================ LOGIN / SETUP ============================ -->
+  <div id="authScreen" class="auth" hidden>
+    <form id="authForm" class="auth-card" autocomplete="on">
+      <h1 id="authTitle">Sign in</h1>
+      <p id="authIntro" class="hint"></p>
+      <label>Username <input name="username" id="authUser" autocomplete="username" required /></label>
+      <label>Password <input name="password" id="authPass" type="password" autocomplete="current-password" required minlength="8" /></label>
+      <label id="authPass2Wrap" hidden>Confirm password <input id="authPass2" type="password" autocomplete="new-password" minlength="8" /></label>
+      <button class="btn primary wide" id="authSubmit" type="submit">Sign in</button>
+      <p id="authMsg" class="msg error" role="alert"></p>
+    </form>
+  </div>
+
+  <!-- ================================ APP ================================= -->
+  <div id="appShell" hidden>
+    <header class="topbar">
+      <a href="#/" class="brand">Wallet statements</a>
+      <nav class="nav" aria-label="Main">
+        <a href="#/" data-nav="wallets">Wallets</a>
+        <a href="#/settings" data-nav="settings">Settings</a>
+      </nav>
+      <div class="user">
+        <span id="userName"></span>
+        <button class="link-btn" id="btnChangePw">Change password</button>
+        <button class="link-btn" id="btnLogout">Sign out</button>
+      </div>
+    </header>
+    <div id="banner" class="banner" hidden></div>
+
+    <main>
+      <!-- =========================== WALLETS ============================ -->
+      <section id="viewWallets" class="view" hidden>
+        <div class="overview" id="overview"></div>
+
+        <div class="panels">
+          <section class="panel" aria-labelledby="syncTitle">
+            <h2 id="syncTitle">Download transactions</h2>
+            <p class="hint" id="syncHint"></p>
+            <div class="btn-row">
+              <button class="btn primary" id="btnSyncAll">Update all wallets</button>
+              <button class="btn" id="btnSyncPending">Only new wallets</button>
+              <button class="btn" id="btnSyncErrors">Retry failed wallets</button>
+              <button class="btn danger" id="btnStop" hidden>Stop</button>
+            </div>
+            <div id="syncProgress" class="progress" hidden>
+              <div class="bar"><span id="syncBar"></span></div>
+              <p id="syncText" class="progress-text"></p>
+              <details id="syncFailures" hidden>
+                <summary>Wallets that failed</summary>
+                <ul id="syncFailList"></ul>
+              </details>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="importTitle">
+            <h2 id="importTitle">Add wallets</h2>
+            <p class="hint">One wallet per line: <code>wallet_id, opening_balance, name</code>. Opening balance and name are optional.</p>
+            <textarea id="importText" rows="4" placeholder="W1001, 0, Ahmed Store&#10;W1002&#10;W1003, 1500"></textarea>
+            <div class="btn-row">
+              <label class="btn file-btn">Choose CSV file<input type="file" id="importFile" accept=".csv,.txt" /></label>
+              <button class="btn primary" id="btnImport">Add wallets</button>
+            </div>
+            <p id="importMsg" class="msg" role="status"></p>
+          </section>
+        </div>
+
+        <section class="panel table-panel" aria-labelledby="walletsTitle">
+          <div class="table-head">
+            <h2 id="walletsTitle">Wallets</h2>
+            <div class="filters">
+              <input type="search" id="search" placeholder="Search wallet ID or name" aria-label="Search wallets" />
+              <select id="statusFilter" aria-label="Filter by status">
+                <option value="">All statuses</option>
+                <option value="done">Up to date</option>
+                <option value="pending">Not downloaded</option>
+                <option value="syncing">Downloading</option>
+                <option value="error">Failed</option>
+              </select>
+              <label class="check"><input type="checkbox" id="issuesOnly" /> With issues only</label>
+            </div>
+            <div class="exports">
+              <a class="btn" href="/api/export/summary.xlsx">Summary (Excel)</a>
+              <select id="zipFormat" aria-label="Format for all statements">
+                <option value="xlsx">Excel</option>
+                <option value="pdf">PDF</option>
+                <option value="csv">CSV</option>
+              </select>
+              <button class="btn" id="btnZip">Download all statements (ZIP)</button>
+            </div>
+          </div>
+          <div class="bulk-bar" id="bulkBar" hidden>
+            <span id="bulkCount"></span>
+            <button class="btn" id="bulkSync">Update selected</button>
+            <button class="btn" id="bulkFull">Re-download selected from day 1</button>
+            <button class="btn danger" id="bulkDelete">Delete selected</button>
+            <button class="link-btn" id="bulkClear">Clear selection</button>
+          </div>
+          <div class="table-wrap">
+            <table class="grid" id="walletTable">
+              <thead>
+                <tr>
+                  <th class="sel"><input type="checkbox" id="selectPage" aria-label="Select all on this page" /></th>
+                  <th><button data-sort="wallet">Wallet</button></th>
+                  <th class="num">Opening</th>
+                  <th class="num">Credits</th>
+                  <th class="num">Debits</th>
+                  <th class="num"><button data-sort="closing">Closing balance</button></th>
+                  <th class="num"><button data-sort="txns">Transactions</button></th>
+                  <th class="num"><button data-sort="flags">Issues</button></th>
+                  <th><button data-sort="status">Status</button></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="pager" id="walletPager"></div>
+        </section>
+      </section>
+
+      <!-- ========================== STATEMENT =========================== -->
+      <section id="viewStatement" class="view" hidden>
+        <a href="#/" class="back">All wallets</a>
+        <div class="st-head">
+          <div>
+            <h1 id="stTitle"></h1>
+            <p id="stSub" class="hint"></p>
+          </div>
+          <div class="wallet-edit">
+            <label>Name <input type="text" id="nameInput" placeholder="Optional" /></label>
+            <label>Opening balance on day 1 <input type="number" step="any" id="openingInput" /></label>
+            <button class="btn" id="btnSaveWallet">Save</button>
+          </div>
+        </div>
+        <div class="btn-row st-actions">
+          <button class="btn" id="btnSyncOne">Update this wallet</button>
+          <button class="btn" id="btnFullOne">Re-download from day 1</button>
+          <button class="btn danger" id="btnDeleteOne">Delete wallet</button>
+        </div>
+
+        <div class="st-filters">
+          <label>From <input type="date" id="fFrom" /></label>
+          <label>To <input type="date" id="fTo" /></label>
+          <label>Show
+            <select id="fType">
+              <option value="">All transactions</option>
+              <option value="credit">Credits</option>
+              <option value="debit">Debits</option>
+              <option value="reverse">Reversals</option>
+              <option value="failed">Failed</option>
+            </select>
+          </label>
+          <label class="check"><input type="checkbox" id="fIssues" /> Issues only</label>
+          <button class="btn" id="btnApply">Apply</button>
+          <span class="spacer"></span>
+          <a class="btn" id="expPdf">PDF</a>
+          <a class="btn" id="expXlsx">Excel</a>
+          <a class="btn" id="expCsv">CSV</a>
+        </div>
+
+        <div class="figures" id="stFigures"></div>
+
+        <div class="panel table-panel">
+          <div class="table-wrap">
+            <table class="grid ledger" id="ledger">
+              <thead>
+                <tr>
+                  <th>Date</th><th>Reference</th><th>Type</th><th>Description</th>
+                  <th class="num">Credit</th><th class="num">Debit</th><th class="num">Balance</th><th>Notes</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="pager" id="ledgerPager"></div>
+        </div>
+      </section>
+
+      <!-- =========================== SETTINGS =========================== -->
+      <section id="viewSettings" class="view" hidden>
+        <div class="settings-head">
+          <div>
+            <h1>Settings</h1>
+            <p class="hint">Connect your wallet API, tell the app where each field is in the response, and choose how statements are built. Test before saving.</p>
+          </div>
+          <button class="btn" id="btnUseMock" hidden>Fill in test API</button>
+        </div>
+        <div class="settings-layout">
+          <form id="settingsForm" class="settings-form" novalidate></form>
+
+          <aside class="test-panel panel" aria-labelledby="testTitle">
+            <h2 id="testTitle">Test connection</h2>
+            <p class="hint">Uses the settings on this page, even before you save. Nothing is stored.</p>
+            <label>Wallet ID <input id="testWallet" placeholder="e.g. W1001" /></label>
+            <div class="two">
+              <label>From <input type="date" id="testFrom" /></label>
+              <label>To <input type="date" id="testTo" /></label>
+            </div>
+            <button class="btn primary wide" id="btnTest" type="button">Test connection</button>
+            <div id="testResult" class="test-result"></div>
+          </aside>
+        </div>
+        <div class="save-bar">
+          <span id="saveState" class="hint"></span>
+          <button class="btn" id="btnRevert" type="button">Undo changes</button>
+          <button class="btn primary" id="btnSaveSettings" type="button">Save settings</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============================== DIALOGS =============================== -->
+  <dialog id="pwDialog" class="dialog">
+    <form id="pwForm" method="dialog">
+      <h2>Change password</h2>
+      <label>Current password <input type="password" id="pwCurrent" autocomplete="current-password" required /></label>
+      <label>New password <input type="password" id="pwNext" autocomplete="new-password" minlength="8" required /></label>
+      <label>Confirm new password <input type="password" id="pwNext2" autocomplete="new-password" minlength="8" required /></label>
+      <p id="pwMsg" class="msg error" role="alert"></p>
+      <div class="btn-row end">
+        <button class="btn" value="cancel" formnovalidate>Cancel</button>
+        <button class="btn primary" id="pwSave" value="save">Change password</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="confirmDialog" class="dialog">
+    <form method="dialog">
+      <h2 id="confirmTitle"></h2>
+      <p id="confirmText"></p>
+      <label id="confirmTypeWrap" hidden>Type <strong>DELETE</strong> to confirm <input id="confirmType" autocomplete="off" /></label>
+      <div class="btn-row end">
+        <button class="btn" value="cancel">Cancel</button>
+        <button class="btn danger" id="confirmOk" value="ok"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="rawDialog" class="dialog wide-dialog">
+    <form method="dialog">
+      <h2 id="rawTitle">Transaction from API</h2>
+      <pre id="rawBody" class="json"></pre>
+      <div class="btn-row end"><button class="btn" value="close">Close</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/core.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/wallets.js"></script>
+  <script src="js/statement.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
