@@ -1,0 +1,22 @@
+{
+  "name": "wallet-statements",
+  "version": "1.0.0",
+  "description": "Rebuild full transaction statements for many wallet accounts from a wallet API",
+  "main": "src/server.js",
+  "private": true,
+  "scripts": {
+    "start": "node src/server.js",
+    "reset-login": "node src/resetLogin.js"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "better-sqlite3": "^11.7.0",
+    "dotenv": "^16.4.7",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.2",
+    "pdfkit": "^0.15.2"
+  }
+}
